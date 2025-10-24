@@ -9,6 +9,7 @@ use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
 const DEFAULT_GITIGNORE: &str = r#"
+output.pdf
 *.synctex.gz
 *.aux
 *.log
