@@ -10,6 +10,7 @@ use walkdir::WalkDir;
 
 const DEFAULT_GITIGNORE: &str = r#"
 output.pdf
+.project-sync-state
 *.synctex.gz
 *.aux
 *.log
