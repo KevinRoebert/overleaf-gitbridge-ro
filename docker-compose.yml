@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     environment:
       OVERLEAF_DATA_PATH: /overleaf-data
-      PROJECTS_DIR: data/projects
+      PROJECTS_DIR: data/compiles
       GIT_ROOT: /data/git-bridge
       READONLY_BRANCH: master
       PORT: "8022"

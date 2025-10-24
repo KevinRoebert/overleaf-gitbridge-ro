@@ -25,15 +25,11 @@ pub fn run_git_http_backend(
         .env("QUERY_STRING", query.unwrap_or(""))
         .env(
             "CONTENT_TYPE",
-            content_type
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or(""),
+            content_type.and_then(|v| v.to_str().ok()).unwrap_or(""),
         )
         .env(
             "CONTENT_LENGTH",
-            content_length
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or(""),
+            content_length.and_then(|v| v.to_str().ok()).unwrap_or(""),
         )
         .env("REMOTE_USER", "gitbridge-ro")
         .stdin(Stdio::piped())
@@ -51,13 +47,17 @@ pub fn run_git_http_backend(
     // Read all stdout
     let mut stdout_buf: Vec<u8> = Vec::new();
     if let Some(mut stdout) = child.stdout.take() {
-        stdout.read_to_end(&mut stdout_buf).map_err(BridgeError::Io)?;
+        stdout
+            .read_to_end(&mut stdout_buf)
+            .map_err(BridgeError::Io)?;
     }
 
     // Capture stderr for logging
     let mut stderr_buf: Vec<u8> = Vec::new();
     if let Some(mut stderr) = child.stderr.take() {
-        stderr.read_to_end(&mut stderr_buf).map_err(BridgeError::Io)?;
+        stderr
+            .read_to_end(&mut stderr_buf)
+            .map_err(BridgeError::Io)?;
     }
     if !stderr_buf.is_empty() {
         warn!(
@@ -79,9 +79,7 @@ pub fn run_git_http_backend(
     parse_cgi_response(stdout_buf)
 }
 
-fn parse_cgi_response(
-    mut all: Vec<u8>,
-) -> Result<(StatusCode, HeaderMap, Vec<u8>), BridgeError> {
+fn parse_cgi_response(mut all: Vec<u8>) -> Result<(StatusCode, HeaderMap, Vec<u8>), BridgeError> {
     // find header/body split
     let split_seq = b"\r\n\r\n";
     let split_alt = b"\n\n";

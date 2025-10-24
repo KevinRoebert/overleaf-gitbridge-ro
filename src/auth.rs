@@ -1,9 +1,9 @@
 use crate::config::Config;
 use crate::error::BridgeError;
 use axum::body::Body;
-use axum::http::{header, Request};
-use base64::engine::general_purpose::STANDARD as BASE64_STD;
+use axum::http::{Request, header};
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64_STD;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -53,9 +53,7 @@ pub fn load_tokens_file(cfg: &Config) -> Result<TokensFile, BridgeError> {
             // No file yet? Return empty default
             Ok(TokensFile::default())
         }
-        Err(e) => Err(BridgeError::Other(format!(
-            "cannot read tokens.json: {e}"
-        ))),
+        Err(e) => Err(BridgeError::Other(format!("cannot read tokens.json: {e}"))),
     }
 }
 

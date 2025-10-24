@@ -5,22 +5,23 @@ mod error;
 mod git_http;
 mod repo;
 
-use axum::body::to_bytes;
 use crate::auth::{
-    extract_token, load_tokens_file, log_auth_failure, save_tokens_file, token_allowed_for_project,
-    TokensFile,
+    TokensFile, extract_token, load_tokens_file, log_auth_failure, save_tokens_file,
+    token_allowed_for_project,
 };
 use crate::config::Config;
 use crate::git_http::run_git_http_backend;
 use crate::repo::ensure_repo;
+use axum::body::to_bytes;
 use axum::{
+    Router,
     body::Body,
     extract::{Path, State},
     http::{Request, Response, StatusCode},
     response::IntoResponse,
     routing::{any, delete, get, post},
-    Router,
 };
+use dashmap::DashMap;
 use std::collections::{HashMap, VecDeque};
 use std::fs;
 use std::io::ErrorKind;
@@ -28,9 +29,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 use tracing::{error, info, warn};
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt};
 use url::form_urlencoded;
-use dashmap::DashMap;
 
 /// Shared application state
 #[derive(Clone)]
@@ -104,8 +104,7 @@ impl AppState {
 #[tokio::main]
 async fn main() {
     // init tracing/logging
-    let filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     fmt().with_env_filter(filter).init();
 
     let cfg = Config::from_env();
@@ -122,10 +121,8 @@ async fn main() {
     let router = Router::new()
         // health
         .route("/", get(health))
-
         // git smart http endpoint
         .route("/git/{*tail}", any(git_handler))
-
         // admin UI SPA + APIs
         .route("/admin", get(admin::admin_app))
         .route("/admin/api/login", post(admin::admin_login_api))
@@ -142,7 +139,6 @@ async fn main() {
         .route("/assets/logo.webp", get(admin::admin_logo_asset))
         .route("/assets/favicon.png", get(admin::admin_favicon_asset))
         .route("/favicon.ico", get(admin::admin_favicon_asset))
-
         .with_state(Arc::new(state));
 
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], cfg.port));
@@ -152,8 +148,8 @@ async fn main() {
             .expect("bind port"),
         router.into_make_service(),
     )
-        .await
-        .expect("server crashed");
+    .await
+    .expect("server crashed");
 }
 
 fn init_storage(cfg: &Config) -> Result<(), String> {
@@ -251,10 +247,7 @@ async fn git_handler(
             Err(e) => {
                 return match e {
                     crate::error::BridgeError::ProjectNotFound(_) => {
-                        response_with_status(
-                            StatusCode::NOT_FOUND,
-                            "project not found\n",
-                        )
+                        response_with_status(StatusCode::NOT_FOUND, "project not found\n")
                     }
                     other => {
                         error!("ensure_repo error: {other}");
@@ -268,10 +261,7 @@ async fn git_handler(
     // --- Block pushes ---
     // If path is .../git-receive-pack OR query service=git-receive-pack
     if remaining.ends_with("git-receive-pack") || is_receive_pack(req.uri().query()) {
-        return response_with_status(
-            StatusCode::FORBIDDEN,
-            "push disabled (read-only)\n",
-        );
+        return response_with_status(StatusCode::FORBIDDEN, "push disabled (read-only)\n");
     }
 
     // --- Call git http-backend ---
@@ -322,9 +312,7 @@ async fn git_handler(
 /// Drain the request body fully into Bytes.
 async fn collect_body(req: Request<Body>) -> Result<Vec<u8>, ()> {
     let (_, body) = req.into_parts();
-    let bytes = to_bytes(body, usize::MAX)
-        .await
-        .map_err(|_| ())?;
+    let bytes = to_bytes(body, usize::MAX).await.map_err(|_| ())?;
     Ok(bytes.to_vec())
 }
 
@@ -344,10 +332,7 @@ fn is_receive_pack(query: Option<&str>) -> bool {
 fn unauthorized_response() -> Response<Body> {
     axum::http::Response::builder()
         .status(StatusCode::UNAUTHORIZED)
-        .header(
-            "WWW-Authenticate",
-            r#"Basic realm="Overleaf Git Readonly""#,
-        )
+        .header("WWW-Authenticate", r#"Basic realm="Overleaf Git Readonly""#)
         .body(Body::from("Unauthorized\n"))
         .unwrap()
 }

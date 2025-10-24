@@ -1,11 +1,11 @@
-use crate::auth::{load_tokens_file, save_tokens_file};
 use crate::AppState;
+use crate::auth::{load_tokens_file, save_tokens_file};
 use axum::{
+    Json,
     body::Body,
     extract::{Path, State},
-    http::{header, HeaderMap, Response, StatusCode},
+    http::{HeaderMap, Response, StatusCode, header},
     response::IntoResponse,
-    Json,
 };
 use hex::encode as hex_encode;
 use serde::{Deserialize, Serialize};
@@ -102,8 +102,7 @@ pub async fn admin_app(State(app): State<Arc<AppState>>) -> Response<Body> {
             .status(StatusCode::SERVICE_UNAVAILABLE)
             .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
             .body(Body::from(
-                "<h1>Admin UI disabled</h1><p>Set ADMIN_PASSWORD env to enable.</p>"
-                    .to_string(),
+                "<h1>Admin UI disabled</h1><p>Set ADMIN_PASSWORD env to enable.</p>".to_string(),
             ))
             .expect("disabled admin response");
     }
@@ -283,8 +282,7 @@ pub async fn admin_create_token_api(
             }
         };
 
-        tf.managed_tokens
-            .insert(token.clone(), description.clone());
+        tf.managed_tokens.insert(token.clone(), description.clone());
 
         if let Err(e) = save_tokens_file(&app.cfg, &tf) {
             error!("save_tokens_file failed in create: {e}");
@@ -362,11 +360,11 @@ pub async fn admin_delete_token_api(
 pub async fn admin_tailwind_asset() -> Response<Body> {
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "application/javascript; charset=utf-8")
         .header(
-            header::CACHE_CONTROL,
-            "public, max-age=86400, immutable",
+            header::CONTENT_TYPE,
+            "application/javascript; charset=utf-8",
         )
+        .header(header::CACHE_CONTROL, "public, max-age=86400, immutable")
         .body(Body::from(TAILWIND_CSS))
         .expect("tailwind response")
 }

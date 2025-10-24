@@ -1,5 +1,5 @@
-use std::{env, path::PathBuf};
-use tracing::info;
+use std::{env, fs, path::PathBuf};
+use tracing::{info, warn};
 
 pub const GIT_AUTHOR_NAME: &str = "Overleaf Sync";
 pub const GIT_AUTHOR_EMAIL: &str = "sync@example.invalid";
@@ -31,7 +31,7 @@ impl Config {
 
         let projects_dir = env::var("PROJECTS_DIR")
             .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("data/projects"));
+            .unwrap_or_else(|_| PathBuf::from("data/compiles"));
 
         let git_root = resolve_path(
             env::var("GIT_ROOT")
@@ -39,8 +39,7 @@ impl Config {
                 .unwrap_or_else(|_| PathBuf::from("/data/git-bridge")),
         );
 
-        let readonly_branch =
-            env::var("READONLY_BRANCH").unwrap_or_else(|_| "master".to_string());
+        let readonly_branch = env::var("READONLY_BRANCH").unwrap_or_else(|_| "master".to_string());
 
         let admin_password = env::var("ADMIN_PASSWORD").ok();
 
@@ -69,9 +68,44 @@ impl Config {
     }
 
     pub fn project_source_dir(&self, project_id: &str) -> PathBuf {
-        self.overleaf_data_path
-            .join(&self.projects_dir)
-            .join(project_id)
+        let base = self.overleaf_data_path.join(&self.projects_dir);
+        let direct = base.join(project_id);
+        if direct.is_dir() {
+            return direct;
+        }
+
+        let mut matches: Vec<PathBuf> = Vec::new();
+        if let Ok(entries) = fs::read_dir(&base) {
+            for entry in entries.flatten() {
+                if !entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
+                    continue;
+                }
+                let name = entry.file_name();
+                let name = name.to_string_lossy();
+                if let Some(rest) = name.strip_prefix(project_id) {
+                    if rest.starts_with('-') {
+                        matches.push(base.join(name.as_ref()));
+                    }
+                }
+            }
+        }
+
+        if matches.is_empty() {
+            return direct;
+        }
+
+        matches.sort();
+        let chosen = matches[0].clone();
+        if matches.len() > 1 {
+            warn!(
+                %project_id,
+                count = matches.len(),
+                chosen = %chosen.display(),
+                "multiple directories share project prefix; using first match"
+            );
+        }
+
+        chosen
     }
 
     pub fn bare_repo_dir(&self, project_id: &str) -> PathBuf {
@@ -96,10 +130,7 @@ impl Config {
         info!("config initialized");
         info!("  port          : {}", self.port);
         info!("  git_root      : {}", self.git_root.display());
-        info!(
-            "  overleaf_root : {}",
-            self.overleaf_data_path.display()
-        );
+        info!("  overleaf_root : {}", self.overleaf_data_path.display());
         info!("  projects_dir  : {}", self.projects_dir.display());
         info!("  tokens_file   : {}", self.tokens_file().display());
         info!("  readonly_branch: {}", self.readonly_branch);
@@ -107,7 +138,11 @@ impl Config {
             info!("  admin_ui      : enabled");
             info!(
                 "  cookie secure : {}",
-                if self.admin_cookie_secure { "on" } else { "off" }
+                if self.admin_cookie_secure {
+                    "on"
+                } else {
+                    "off"
+                }
             );
             info!(
                 "  session ttl   : {} seconds",

@@ -20,16 +20,11 @@ const DEFAULT_GITIGNORE: &str = r#"*.pdf
 
 /// Public async wrapper that also handles locking per project.
 /// We will call this from the HTTP handler.
-pub async fn ensure_repo(
-    cfg: Config,
-    project_id: &str,
-) -> Result<(), BridgeError> {
+pub async fn ensure_repo(cfg: Config, project_id: &str) -> Result<(), BridgeError> {
     // We do heavy filesystem + git work, so run it blocking.
     let cfg_cloned = cfg.clone();
     let project_id_owned = project_id.to_string();
-    tokio::task::spawn_blocking(move || {
-        ensure_repo_blocking(&cfg_cloned, &project_id_owned)
-    })
+    tokio::task::spawn_blocking(move || ensure_repo_blocking(&cfg_cloned, &project_id_owned))
         .await
         .map_err(|e| BridgeError::Other(format!("join error: {e}")))?
 }
@@ -41,7 +36,9 @@ fn ensure_repo_blocking(cfg: &Config, project_id: &str) -> Result<(), BridgeErro
     if !source_dir.is_dir() {
         if bare_repo_dir.exists() {
             match fs::remove_dir_all(&bare_repo_dir) {
-                Ok(_) => info!(%project_id, "removed stale bare repo because source project is missing"),
+                Ok(_) => {
+                    info!(%project_id, "removed stale bare repo because source project is missing")
+                }
                 Err(e) => warn!(%project_id, error = %e, "failed to remove stale bare repo"),
             }
         }
@@ -170,15 +167,10 @@ fn sync_existing(
         run_git(&["config", "user.email", GIT_AUTHOR_EMAIL], tmp)?;
 
         let ts = Utc::now().to_rfc3339();
-        let msg = format!(
-            "Sync {ts} from Overleaf project {project_id}"
-        );
+        let msg = format!("Sync {ts} from Overleaf project {project_id}");
 
         run_git(&["commit", "-m", &msg], tmp)?;
-        run_git(
-            &["push", "origin", &cfg.readonly_branch],
-            tmp,
-        )?;
+        run_git(&["push", "origin", &cfg.readonly_branch], tmp)?;
         info!(%project_id, "pushed new commit");
     } else {
         debug!(%project_id, "no changes detected, skipping commit");
@@ -235,8 +227,8 @@ fn copy_recursive(src: &Path, dst: &Path) -> Result<(), BridgeError> {
             continue;
         }
         let target_path = dst.join(rel);
-    if entry.file_type().is_dir() {
-        fs::create_dir_all(&target_path).map_err(BridgeError::Io)?;
+        if entry.file_type().is_dir() {
+            fs::create_dir_all(&target_path).map_err(BridgeError::Io)?;
         } else if entry.file_type().is_file() {
             if let Some(parent) = target_path.parent() {
                 fs::create_dir_all(parent).map_err(BridgeError::Io)?;
@@ -253,7 +245,8 @@ fn delete_removed(src: &Path, dst: &Path) -> Result<(), BridgeError> {
     for entry in WalkDir::new(dst)
         .into_iter()
         .filter_map(|e| e.ok())
-        .collect::<Vec<_>>() // collect first because we'll mutate
+        .collect::<Vec<_>>()
+    // collect first because we'll mutate
     {
         let path = entry.path();
         let rel = match path.strip_prefix(dst) {
