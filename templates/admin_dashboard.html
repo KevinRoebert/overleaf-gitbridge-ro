@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ShareLatex Gitbridge Admin</title>
+  <link rel="icon" type="image/png" href="/assets/favicon.png" />
+  <link rel="preload" href="/assets/logo.webp" as="image" />
+  <script src="/assets/tailwind.js"></script>
+</head>
+<body class="min-h-screen bg-slate-100">
+  <main class="mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-10 sm:px-6 lg:px-8">
+    <section id="view-login" class="mx-auto w-full max-w-md rounded-2xl bg-white p-8 shadow-lg">
+      <header class="mb-6 text-center">
+        <img src="/assets/logo.webp" alt="ShareLatex Gitbridge" class="mx-auto mb-3" style="width:140px;height:140px;" />
+        <h1 class="text-3xl font-semibold text-slate-900">Admin Login</h1>
+        <p class="mt-2 text-sm text-slate-600">Enter the admin password to manage read-only tokens.</p>
+      </header>
+      <form id="login-form" class="space-y-5">
+        <div>
+          <label for="login-password" class="block text-sm font-medium text-slate-700">Admin password</label>
+          <input id="login-password" type="password" name="password" autocomplete="current-password" required
+                 class="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+        </div>
+        <div id="login-error" class="hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"></div>
+        <button type="submit"
+                class="w-full inline-flex justify-center rounded-lg bg-sky-600 px-4 py-2 text-white font-semibold shadow-sm hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-sky-600">
+          Login
+        </button>
+      </form>
+    </section>
+
+    <section id="view-app" class="hidden flex-grow">
+      <header class="mb-10 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex items-center gap-3">
+          <img src="/assets/logo.webp" alt="ShareLatex Gitbridge" class="logo-medium" style="width:120px;height:120px;" />
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-wide text-sky-600">ShareLatex Gitbridge</p>
+            <h1 class="text-3xl font-semibold text-slate-900">Admin Tokens</h1>
+          </div>
+        <p class="mt-2 max-w-2xl text-sm text-slate-600">
+          Create or revoke read-only access tokens. Each token grants read access to every ShareLatex project mirrored by this bridge.
+        </p>
+        </div>
+        <button id="logout-btn"
+                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+          Logout
+        </button>
+      </header>
+
+      <section class="mb-10 rounded-2xl bg-white p-6 shadow">
+        <h2 class="text-lg font-semibold text-slate-900">Create token</h2>
+        <form id="create-form" class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end">
+          <div class="sm:flex-1">
+            <label for="description" class="block text-sm font-medium text-slate-700">Description / purpose</label>
+            <input id="description" type="text" name="description" placeholder="e.g. GitLab mirror for team thesis"
+                   class="mt-2 w-full rounded-lg border border-slate-300 px-4 py-2 text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-sky-500" />
+          </div>
+          <button type="submit"
+                  class="w-full sm:w-auto inline-flex items-center justify-center rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2">
+            Generate token
+          </button>
+        </form>
+      </section>
+
+      <section class="rounded-2xl bg-white p-6 shadow">
+        <h2 class="text-lg font-semibold text-slate-900">Existing tokens</h2>
+        <div id="token-table-error" class="mt-4 hidden rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600"></div>
+        <div class="mt-6 overflow-hidden rounded-xl border border-slate-200">
+          <table class="min-w-full divide-y divide-slate-200">
+            <thead class="bg-slate-50">
+              <tr>
+                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Token</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Description</th>
+                <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">Action</th>
+              </tr>
+            </thead>
+            <tbody id="token-table-body" class="divide-y divide-slate-200 bg-white">
+              <tr>
+                <td colspan="3" class="px-4 py-8 text-center text-sm text-slate-500">Loading tokens …</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <div id="delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 sm:p-6" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="delete-modal-title">
+    <div id="delete-modal-overlay" class="absolute inset-0 bg-slate-900/40"></div>
+    <div class="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+      <button type="button" id="delete-modal-close" class="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1">
+        <span class="sr-only">Close</span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 6l8 8"></path>
+          <path d="M14 6l-8 8"></path>
+        </svg>
+      </button>
+      <div class="mt-2">
+        <h2 id="delete-modal-title" class="text-lg font-semibold text-slate-900">Delete token</h2>
+        <p class="mt-3 text-sm text-slate-600">Are you sure you want to delete this token?</p>
+        <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Token</p>
+          <code id="delete-modal-token" class="mt-1 block font-mono text-sm text-slate-800"></code>
+        </div>
+      </div>
+      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" id="delete-modal-cancel" class="inline-flex items-center justify-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2">Cancel</button>
+        <button type="button" id="delete-modal-confirm" class="inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Delete token</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const viewLogin = document.getElementById('view-login');
+      const viewApp = document.getElementById('view-app');
+      const loginForm = document.getElementById('login-form');
+      const loginPassword = document.getElementById('login-password');
+      const loginError = document.getElementById('login-error');
+      const logoutBtn = document.getElementById('logout-btn');
+      const createForm = document.getElementById('create-form');
+      const descriptionInput = document.getElementById('description');
+      const tbody = document.getElementById('token-table-body');
+      const errorBox = document.getElementById('token-table-error');
+      const deleteModal = document.getElementById('delete-modal');
+      const deleteModalOverlay = document.getElementById('delete-modal-overlay');
+      const deleteModalToken = document.getElementById('delete-modal-token');
+      const deleteModalConfirm = document.getElementById('delete-modal-confirm');
+      const deleteModalCancel = document.getElementById('delete-modal-cancel');
+      const deleteModalClose = document.getElementById('delete-modal-close');
+      let pendingDeleteToken = null;
+
+      const showLogin = (message) => {
+        if (message) {
+          loginError.textContent = message;
+          loginError.classList.remove('hidden');
+        } else {
+          loginError.classList.add('hidden');
+        }
+        viewApp.classList.add('hidden');
+        viewLogin.classList.remove('hidden');
+        loginPassword.focus();
+      };
+
+      const showApp = () => {
+        loginError.classList.add('hidden');
+        viewLogin.classList.add('hidden');
+        viewApp.classList.remove('hidden');
+      };
+
+      const escapeHtml = (str) =>
+        String(str ?? '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+
+      const setStatus = (btn, message, success) => {
+        const status = btn.parentElement.querySelector('.copy-status');
+        if (!status) return;
+        status.textContent = message;
+        status.classList.remove('hidden', 'text-green-600', 'text-red-600');
+        status.classList.add(success ? 'text-green-600' : 'text-red-600');
+        if (btn._copyTimeout) {
+          clearTimeout(btn._copyTimeout);
+        }
+        btn._copyTimeout = window.setTimeout(() => {
+          status.classList.add('hidden');
+        }, 2000);
+      };
+
+      const isModalOpen = () => deleteModal && !deleteModal.classList.contains('hidden');
+
+      const closeDeleteModal = () => {
+        if (!deleteModal) {
+          return;
+        }
+        pendingDeleteToken = null;
+        deleteModal.classList.add('hidden');
+        deleteModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('overflow-hidden');
+        if (deleteModalConfirm) {
+          deleteModalConfirm.disabled = false;
+          deleteModalConfirm.classList.remove('opacity-70');
+        }
+      };
+
+      const openDeleteModal = (token) => {
+        if (!deleteModal || !deleteModalConfirm) {
+          if (window.confirm('Delete token?')) {
+            deleteTokenRequest(token)
+              .then(() => loadTokens())
+              .catch((err) => {
+                console.error(err);
+                showTableError(err.message || 'Failed to delete token.');
+              });
+          }
+          return;
+        }
+        pendingDeleteToken = token;
+        if (deleteModalToken) {
+          deleteModalToken.textContent = token;
+        }
+        deleteModal.classList.remove('hidden');
+        deleteModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('overflow-hidden');
+        window.requestAnimationFrame(() => {
+          deleteModalConfirm.focus();
+        });
+      };
+
+      const deleteTokenRequest = async (tokenValue) => {
+        if (!tokenValue) return;
+        const response = await fetch(`/admin/api/tokens/${encodeURIComponent(tokenValue)}`, {
+          method: 'DELETE',
+          credentials: 'same-origin',
+        });
+        if (!response.ok && response.status !== 204) {
+          throw new Error(`Failed to delete token (HTTP ${response.status})`);
+        }
+      };
+
+      const copyWithFallback = (token, btn) => {
+        const textarea = document.createElement('textarea');
+        textarea.value = token;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        let succeeded = false;
+        try {
+          succeeded = document.execCommand('copy');
+        } catch (err) {
+          succeeded = false;
+        }
+        document.body.removeChild(textarea);
+        setStatus(btn, succeeded ? 'Copied!' : 'Copy failed', succeeded);
+      };
+
+      const attachCopyHandler = (btn) => {
+        if (!btn) return;
+        btn.addEventListener('click', async () => {
+          const token = btn.getAttribute('data-token') || '';
+          if (!token) {
+            return;
+          }
+
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            try {
+              await navigator.clipboard.writeText(token);
+              setStatus(btn, 'Copied!', true);
+              return;
+            } catch (err) {
+              // fall back
+            }
+          }
+
+          copyWithFallback(token, btn);
+        });
+      };
+
+      const renderTokens = (tokens) => {
+        tbody.innerHTML = '';
+        if (!tokens.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-sm text-slate-500">No tokens yet.</td></tr>';
+          return;
+        }
+
+        tokens.forEach(({ token, description }) => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-slate-50';
+          const safeToken = escapeHtml(token);
+          const safeDesc = escapeHtml(description || '');
+          row.innerHTML = `
+            <td class="px-4 py-3 align-top text-sm text-slate-800">
+              <div class="flex items-center gap-3">
+                <code class="rounded bg-slate-100 px-2 py-1 font-mono text-sm text-slate-800">${safeToken}</code>
+                <button type="button" class="js-copy-token inline-flex items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-500 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-1" data-token="${safeToken}">
+                  <span class="sr-only">Copy token</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="14" height="14" x="9" y="9" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                </button>
+                <span class="copy-status hidden text-xs font-medium text-green-600"></span>
+              </div>
+            </td>
+            <td class="px-4 py-3 align-top text-sm text-slate-700">${safeDesc}</td>
+            <td class="px-4 py-3 align-top text-right text-sm">
+              <button type="button" data-token="${safeToken}" class="js-delete-token inline-flex items-center rounded-md border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+          attachCopyHandler(row.querySelector('.js-copy-token'));
+          const deleteBtn = row.querySelector('.js-delete-token');
+          if (deleteBtn) {
+            deleteBtn.addEventListener('click', async () => {
+              const tokenValue = deleteBtn.getAttribute('data-token');
+              if (!tokenValue) return;
+              openDeleteModal(tokenValue);
+            });
+          }
+        });
+      };
+
+      const showTableError = (message) => {
+        if (!errorBox) return;
+        if (message) {
+          errorBox.textContent = message;
+          errorBox.classList.remove('hidden');
+        } else {
+          errorBox.classList.add('hidden');
+        }
+      };
+
+      const loadTokens = async () => {
+        try {
+          showTableError('');
+          const response = await fetch('/admin/api/tokens', {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+          });
+
+          if (response.status === 401) {
+            showLogin();
+            return;
+          }
+
+          if (!response.ok) {
+            const body = await response.json().catch(() => ({}));
+            throw new Error(body.error || `Failed to load tokens (HTTP ${response.status})`);
+          }
+
+          const data = await response.json();
+          showApp();
+          renderTokens(Array.isArray(data) ? data : []);
+        } catch (err) {
+          console.error('Token fetch failed', err);
+          showTableError(err.message || 'Failed to load tokens.');
+          tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-sm text-red-600">Unable to load tokens.</td></tr>';
+          showLogin(err.message || '');
+        }
+      };
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        loginError.classList.add('hidden');
+        const password = loginPassword.value.trim();
+        if (!password) {
+          showLogin('Password is required.');
+          return;
+        }
+        try {
+          const response = await fetch('/admin/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ password }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            showLogin(data.error || 'Login failed.');
+            return;
+          }
+          loginPassword.value = '';
+          await loadTokens();
+        } catch (err) {
+          console.error(err);
+          showLogin(err.message || 'Login failed.');
+        }
+      });
+
+      logoutBtn.addEventListener('click', async () => {
+        try {
+          await fetch('/admin/api/logout', {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin',
+          });
+        } catch (err) {
+          console.error(err);
+        }
+        showLogin('You have been logged out.');
+      });
+
+      if (deleteModalCancel) {
+        deleteModalCancel.addEventListener('click', () => {
+          closeDeleteModal();
+        });
+      }
+
+      if (deleteModalOverlay) {
+        deleteModalOverlay.addEventListener('click', () => {
+          closeDeleteModal();
+        });
+      }
+
+      if (deleteModalClose) {
+        deleteModalClose.addEventListener('click', () => {
+          closeDeleteModal();
+        });
+      }
+
+      if (deleteModalConfirm) {
+        deleteModalConfirm.addEventListener('click', async () => {
+          if (!pendingDeleteToken) {
+            closeDeleteModal();
+            return;
+          }
+          deleteModalConfirm.disabled = true;
+          deleteModalConfirm.classList.add('opacity-70');
+          try {
+            await deleteTokenRequest(pendingDeleteToken);
+            closeDeleteModal();
+            await loadTokens();
+          } catch (err) {
+            console.error(err);
+            showTableError(err.message || 'Failed to delete token.');
+          } finally {
+            deleteModalConfirm.disabled = false;
+            deleteModalConfirm.classList.remove('opacity-70');
+          }
+        });
+      }
+
+      window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && isModalOpen()) {
+          closeDeleteModal();
+        }
+      });
+
+      createForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const description = descriptionInput.value.trim();
+        if (!description) {
+          showTableError('Description is required.');
+          return;
+        }
+        try {
+          const response = await fetch('/admin/api/tokens', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({ description }),
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || `Failed to create token (HTTP ${response.status})`);
+          }
+          descriptionInput.value = '';
+          await loadTokens();
+        } catch (err) {
+          console.error(err);
+          showTableError(err.message || 'Failed to create token.');
+        }
+      });
+
+      // Initial state: attempt to load tokens, fall back to login view on 401
+      loadTokens();
+    });
+  </script>
+</body>
+</html>

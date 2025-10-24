@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  gitbridge-ro:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      SHARELATEX_DATA_PATH: /sharelatex-data
+      PROJECTS_DIR: data/compiles
+      GIT_ROOT: /data/git-bridge
+      READONLY_BRANCH: master
+      PORT: "8022"
+      ADMIN_PASSWORD: "supersecret-admin-pass"
+      ADMIN_COOKIE_SECURE: false
+      ADMIN_SESSION_TTL_SECONDS: 3600
+    volumes:
+      # ShareLatex data read-only:
+      - ./sharelatex-data:/sharelatex-data:ro
+      - ./gitbridge-data:/data/git-bridge
+    ports:
+      - "8022:8022"
