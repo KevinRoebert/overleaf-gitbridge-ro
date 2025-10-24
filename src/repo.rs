@@ -8,7 +8,7 @@ use tempfile::TempDir;
 use tracing::{debug, info, warn};
 use walkdir::WalkDir;
 
-const DEFAULT_GITIGNORE: &str = r#"*.pdf
+const DEFAULT_GITIGNORE: &str = r#"
 *.synctex.gz
 *.aux
 *.log
