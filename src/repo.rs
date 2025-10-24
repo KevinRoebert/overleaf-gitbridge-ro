@@ -16,6 +16,10 @@ const DEFAULT_GITIGNORE: &str = r#"*.pdf
 *.blg
 *.out
 *.toc
+*.stdout
+*.stderr
+*.fls
+*.fdb_latexmk
 "#;
 
 /// Public async wrapper that also handles locking per project.
